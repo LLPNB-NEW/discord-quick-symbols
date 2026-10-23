@@ -4,6 +4,8 @@
 // @version      1.0.3
 // @description  在聊天输入框的发送键左边加一个“”按钮：点一下插入一对符号，光标落在符号中间；悬停或点按还能换用别的符号、调整光标落点。
 // @author       LLP和小鲸娘
+// @license      MIT
+// @homepageURL  https://github.com/LLPNB-NEW/discord-quick-symbols
 // @match        https://discord.com/*
 // @match        https://ptb.discord.com/*
 // @match        https://canary.discord.com/*
@@ -276,13 +278,16 @@ window.BdApi = {
  *   5. 插件类（挂载按钮、弹出菜单、设置面板、快捷键）
  *
  * 关键取舍：
- *   - 按钮插在发送键左边。发送键不靠类名硬认：先看 aria-label / 类名 / data-testid，
- *     都对不上就按“最右下角那颗按钮”猜；图标栏则从输入框往上找第一个带按钮的祖先。
- *     React 重渲染把按钮挤掉时，用一个 debounce 过的 MutationObserver 补回来。
- *   - 插入文本优先走 Discord 自己的 ComponentDispatch.dispatchToLastSubscribed("INSERT_TEXT")，
- *     因为输入框是 Slate 受控组件，直接改 DOM 会被它还原；这条不生效时退回
- *     document.execCommand("insertText")，两条都失败才报错。成功与否用“文本有没有变”验证。
+ *   - 按钮挂在输入框图标栏里，优先塞到发送键左边；发送键只在有文字时才渲染，所以每次
+ *     重挂都会用 planMountPosition() 重新规划落点。编辑器内部的 role="button"（@提及、
+ *     表情）一律不算界面按钮，钩子绝不允许落进编辑器本体。
+ *   - 插入文本优先直接调这个输入框自己的 TextArea 实例（真正写进 Slate 模型），再退
+ *     ComponentDispatch 的 INSERT_TEXT 通道和 document.execCommand；每条都验文本有没有变。
+ *   - 插入后光标由 placeCaretInside() 接管：等焦点回来、把光标挪进符号中间、必要时重试，
+ *     否则接着打 @ 选人时提及会落在符号外面。
  *   - 所有“光标该停哪”的判断都在纯函数 planInsertion() 里完成，方便测试。
+ *
+ * 协议：MIT，见仓库根目录的 LICENSE。
  */
 
 "use strict";
