@@ -19,6 +19,39 @@
 
 > 只对网页版 discord.com 生效；桌面客户端请用 `main` 分支的 BetterDiscord 版本。
 
+## 手机 / 平板安装（网页版）
+
+手机上的 Discord **App 装不了这个插件**（官方 App 没有插件接口，BetterDiscord 也只改桌面版）。
+手机要用就走「浏览器 + 用户脚本管理器」，登录网页版 Discord：
+
+**Android**
+
+1. 装一个支持扩展的浏览器：[Kiwi Browser](https://kiwibrowser.com/)（Chromium 内核，可装 Chrome 扩展）
+   或 Firefox for Android（在「附加组件」里直接搜 Tampermonkey）。
+2. 装 Tampermonkey：Kiwi 打开 Chrome 应用商店搜 Tampermonkey 安装；Firefox 从附加组件页安装。
+3. 用这个浏览器打开脚本地址（就是上面那条 raw 链接），篡改猴会弹出安装页 → 安装。
+4. 打开 <https://discord.com/channels/@me> 登录，进任意频道。
+5. **长按**「“”」按钮 0.6 秒打开设置（触屏没有右键）；轻点还是插入 / 开菜单。
+
+**iPhone / iPad**
+
+1. 装免费的 [Userscripts](https://apps.apple.com/app/userscripts/id1463298887)（Safari 扩展），
+   或在 App Store 买 Tampermonkey（Safari 版）。
+2. 「设置 → Safari → 扩展」里打开它，并允许访问 `discord.com`。
+3. Safari 打开上面那条 raw 链接，扩展会识别 `.user.js` 并弹出安装。
+4. 打开 discord.com 登录后使用；同样长按按钮开设置。
+
+**看不到按钮 / 装不上？**
+
+- 手机网页版可能是窄屏布局，图标栏和桌面不同。先切「请求桌面版网站」再刷新：
+  Safari 点地址栏左侧「大小」→ 请求桌面网站；Kiwi 点「⋮」→ 桌面版网站。
+- 手机网页版登录偶尔会卡在人机验证，换网络或换浏览器重试。
+- 脚本只有在**聊天输入框渲染出来之后**才会挂上按钮；刚进频道时稍等一两秒。
+- 长按没反应：确认装的是 1.0.4 及以上（篡改猴里看脚本版本），旧版只支持右键。
+
+> 想用官方 App 的话只能走第三方改包客户端（Vendetta / Revenge 之类），那是另一套插件格式，
+> 本仓库的 `.plugin.js` 和 `.user.js` 都不能直接用。
+
 ---
 
 ## 功能

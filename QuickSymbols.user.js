@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         QuickSymbols — Discord 快捷符号
 // @namespace    https://github.com/quick-symbols
-// @version      1.0.3
+// @version      1.0.4
 // @description  在聊天输入框的发送键左边加一个“”按钮：点一下插入一对符号，光标落在符号中间；悬停或点按还能换用别的符号、调整光标落点。
 // @author       LLP和小鲸娘
 // @license      GPL-3.0-or-later
@@ -264,7 +264,7 @@ window.BdApi = {
  * @name QuickSymbols
  * @author LLP和小鲸娘
  * @description 在聊天输入框的发送键左边加一个“”按钮：点一下插入一对符号，光标落在符号中间；悬停或点按还能换用别的符号、调整光标落点。
- * @version 1.0.3
+ * @version 1.0.4
  */
 
 /*
@@ -297,7 +297,7 @@ window.BdApi = {
  * ================================================================== */
 
 const PLUGIN_NAME = "QuickSymbols";
-const PLUGIN_VERSION = "1.0.3";
+const PLUGIN_VERSION = "1.0.4";
 const CONFIG_KEY = "config";
 const STYLE_ID = "QuickSymbols";
 const LOG_PREFIX = "[QuickSymbols]";
@@ -2700,6 +2700,56 @@ document.addEventListener("contextmenu", function (event) {
     event.preventDefault();
     __qsbOpenSettings();
   }
+}, true);
+
+/* 手机/平板没有右键：长按按钮 600ms 也算打开设置。
+   轻点仍然是「插入 / 开菜单」，长按时把随后那一下 click 吃掉，免得顺手插一对符号。 */
+var __qsbPressTimer = null;
+var __qsbPressX = 0;
+var __qsbPressY = 0;
+var __qsbSwallowClick = false;
+
+function __qsbCancelPress() {
+  if (__qsbPressTimer !== null) {
+    clearTimeout(__qsbPressTimer);
+    __qsbPressTimer = null;
+  }
+}
+
+document.addEventListener("pointerdown", function (event) {
+  var target = event.target;
+  var btn = target && target.closest && target.closest(".qsb-btn");
+  if (!btn) return;
+  if (event.pointerType === "mouse") return;
+  __qsbPressX = event.clientX;
+  __qsbPressY = event.clientY;
+  __qsbCancelPress();
+  __qsbPressTimer = setTimeout(function () {
+    __qsbPressTimer = null;
+    __qsbSwallowClick = true;
+    setTimeout(function () { __qsbSwallowClick = false; }, 800);
+    if (navigator.vibrate) {
+      try { navigator.vibrate(12); } catch (err) { /* 有些浏览器不给震 */ }
+    }
+    __qsbOpenSettings();
+  }, 600);
+}, true);
+
+document.addEventListener("pointermove", function (event) {
+  if (__qsbPressTimer === null) return;
+  if (Math.abs(event.clientX - __qsbPressX) > 10 || Math.abs(event.clientY - __qsbPressY) > 10) {
+    __qsbCancelPress();
+  }
+}, true);
+
+document.addEventListener("pointerup", __qsbCancelPress, true);
+document.addEventListener("pointercancel", __qsbCancelPress, true);
+
+document.addEventListener("click", function (event) {
+  if (!__qsbSwallowClick) return;
+  __qsbSwallowClick = false;
+  event.preventDefault();
+  event.stopPropagation();
 }, true);
 
 document.addEventListener("keydown", function (event) {
