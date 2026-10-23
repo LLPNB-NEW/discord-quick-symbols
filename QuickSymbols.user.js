@@ -4,7 +4,7 @@
 // @version      1.0.3
 // @description  在聊天输入框的发送键左边加一个“”按钮：点一下插入一对符号，光标落在符号中间；悬停或点按还能换用别的符号、调整光标落点。
 // @author       LLP和小鲸娘
-// @license      MIT
+// @license      GPL-3.0-or-later
 // @homepageURL  https://github.com/LLPNB-NEW/discord-quick-symbols
 // @match        https://discord.com/*
 // @match        https://ptb.discord.com/*
@@ -287,7 +287,7 @@ window.BdApi = {
  *     否则接着打 @ 选人时提及会落在符号外面。
  *   - 所有“光标该停哪”的判断都在纯函数 planInsertion() 里完成，方便测试。
  *
- * 协议：MIT，见仓库根目录的 LICENSE。
+ * 协议：GPL-3.0（见仓库根目录的 LICENSE）。
  */
 
 "use strict";
