@@ -1,0 +1,9 @@
+# 构建产物（网页版分支会单独提交这一份）
+QuickSymbols.user.js
+
+# 调试用的临时文件：Discord 的入口包、截图裁剪、缓存分析结果
+tests/_dl/
+tests/_cache-*.txt
+
+node_modules/
+*.log

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Slate 光标同步实验室</title>
+<style>
+  body { margin: 0; padding: 24px; background: #1e1f22; color: #dbdee1; font: 14px/1.6 "Microsoft YaHei", sans-serif; }
+  h1 { font-size: 16px; font-weight: 600; }
+  #editor { min-height: 56px; padding: 10px 12px; border-radius: 8px; background: #313338;
+            color: #dbdee1; font: 16px/1.4 "Microsoft YaHei", sans-serif; white-space: pre-wrap; outline: none; }
+  #log { margin-top: 16px; white-space: pre-wrap; font-family: Consolas, monospace; font-size: 12px; color: #b5bac1; }
+</style>
+</head>
+<body>
+<h1>Slate 光标同步实验室（验证「插入后把 DOM 光标挪回去，模型会不会跟着走」）</h1>
+<div id="root"></div>
+<div id="log"></div>
+
+<script>
+  // 模块脚本从 CDN 加载，失败时要能看见原因：先把探针挂上，模块加载成功后再覆盖。
+  window.__labErrors = [];
+  window.addEventListener("error", function (event) {
+    window.__labErrors.push(event.message || ("资源加载失败：" + (event.target && event.target.src)));
+  }, true);
+  window.addEventListener("unhandledrejection", function (event) {
+    window.__labErrors.push("Promise 拒绝：" + String(event.reason));
+  });
+  window.__runSlateLab = async function () {
+    const started = Date.now();
+    while (!window.__slateRun && Date.now() - started < 12000) {
+      await new Promise(function (resolve) { setTimeout(resolve, 100); });
+    }
+    if (!window.__slateRun) {
+      return [{ name: "Slate 环境就绪", ok: false, detail: "模块没加载：" + (window.__labErrors.join(" | ") || "没有报错，可能是网络超时") }];
+    }
+    return window.__slateRun();
+  };
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1?bundle",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?bundle&external=react",
+    "react-dom": "https://esm.sh/react-dom@18.3.1?bundle&external=react",
+    "slate": "https://esm.sh/slate@0.94.1?bundle",
+    "slate-react": "https://esm.sh/slate-react@0.94.0?bundle&external=react,react-dom,slate"
+  }
+}
+</script>
+<script type="module">
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { createEditor, Transforms, Editor } from "slate";
+import { Slate, Editable, withReact } from "slate-react";
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms || 0));
+
+function textNodesOf(root) {
+  const nodes = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let node = walker.nextNode();
+  while (node) { nodes.push(node); node = walker.nextNode(); }
+  return nodes;
+}
+
+// 和插件里 caretBeforeClosing 一模一样的逻辑
+function caretBeforeClosing(root, closeText) {
+  const nodes = textNodesOf(root);
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const raw = nodes[i].nodeValue || "";
+    if (!raw) continue;
+    let end = raw.length;
+    while (end > 0 && /[\u200B\uFEFF]/.test(raw.charAt(end - 1))) end--;
+    if (end >= closeText.length && raw.slice(end - closeText.length, end) === closeText) {
+      return { node: nodes[i], offset: end - closeText.length };
+    }
+    return null;
+  }
+  return null;
+}
+
+function setCaretAt(point) {
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.setStart(point.node, point.offset);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+let editor = null;
+function App() {
+  const [instance] = React.useState(() => withReact(createEditor()));
+  editor = instance;
+  const [value, setValue] = React.useState([{ type: "line", children: [{ text: "" }] }]);
+  return React.createElement(
+    Slate,
+    { editor: instance, value, onChange: setValue },
+    React.createElement(Editable, { id: "editor", placeholder: "输入……" })
+  );
+}
+createRoot(document.getElementById("root")).render(React.createElement(App));
+
+async function ready() {
+  for (let i = 0; i < 100; i++) {
+    if (editor && document.getElementById("editor")) return true;
+    await sleep(60);
+  }
+  return false;
+}
+
+async function resetDoc() {
+  Transforms.select(editor, Editor.range(editor, []));
+  Transforms.delete(editor);
+  if (editor.children.length === 0) {
+    Transforms.insertNodes(editor, { type: "line", children: [{ text: "" }] });
+  }
+  Transforms.select(editor, Editor.end(editor, []));
+  await sleep(80);
+}
+
+function modelText() {
+  return Editor.string(editor, []);
+}
+
+function selectionOffset() {
+  const sel = editor.selection;
+  return sel ? sel.focus.offset : -1;
+}
+
+async function insertPairAndMaybeFix(fix) {
+  const dom = document.getElementById("editor");
+  dom.focus();
+  Transforms.select(editor, Editor.end(editor, []));
+  await sleep(60);
+  // Discord 的 TextArea.insertText 走的就是 Slate 的 Transforms.insertText
+  Transforms.insertText(editor, "（）");
+  await sleep(120);
+  if (fix) {
+    const point = caretBeforeClosing(dom, "）");
+    if (point) setCaretAt(point);
+    await sleep(220);
+  }
+  const offset = selectionOffset();
+  const text = modelText();
+  const modelInside = offset > 0 && text.charAt(offset - 1) === "（" && text.charAt(offset) === "）";
+  // 再模拟按一下 @：真实键盘输入会走模型选区
+  Transforms.insertText(editor, "@");
+  await sleep(80);
+  const finalText = modelText();
+  return { offset, text, modelInside, finalText, typedInside: finalText === "（@）" };
+}
+
+window.__slateRun = async function () {
+  const results = [];
+  const push = (name, ok, detail) => results.push({ name, ok, detail: String(detail || "") });
+  const ok = await ready();
+  if (!ok) {
+    push("Slate 环境就绪", false, "编辑器没挂上（esm.sh 加载失败？）");
+    return results;
+  }
+  push("Slate 环境就绪", true, "");
+
+  // A：不修正光标（旧行为）
+  await resetDoc();
+  const a = await insertPairAndMaybeFix(false);
+  push("A 旧行为：不挪光标时 @ 落在符号外", a.finalText === "（）@", JSON.stringify(a));
+
+  // B：插入后把 DOM 光标挪进符号中间（插件 1.0.2 的做法）
+  await resetDoc();
+  const b = await insertPairAndMaybeFix(true);
+  push("B 新行为：挪光标后模型选区进入符号内", b.modelInside, JSON.stringify(b));
+  push("B 新行为：接着输入 @ 落在符号内", b.typedInside, JSON.stringify(b));
+
+  document.getElementById("log").textContent = JSON.stringify({ a, b }, null, 2);
+  return results;
+};
+</script>
+</body>
+</html>

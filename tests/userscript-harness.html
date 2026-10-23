@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>QuickSymbols 用户脚本冒烟测试（篡改猴版）</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #313338; color: #dcddde; font-family: "Segoe UI", sans-serif; }
+  .channelTextArea__fake { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px; background: #383a40; }
+  .outer { display: flex; flex-direction: column; gap: 6px; }
+  .editorWrap { background: #383a40; border-radius: 8px; padding: 10px; min-height: 40px; }
+  [data-slate-editor] { outline: none; min-height: 20px; font-size: 16px; }
+  .buttons__fake { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .buttons__fake button { background: transparent; border: 0; color: #b9bbbe; font-size: 16px; cursor: pointer; }
+</style>
+</head>
+<body>
+  <!-- 和 harness.html 一样的仿 Discord 聊天栏结构 -->
+  <div class="channelTextArea__fake">
+    <div class="outer">
+      <div class="editorWrap">
+        <div id="editor" contenteditable="true" role="textbox" data-slate-editor="true" spellcheck="false"></div>
+      </div>
+      <div class="buttons__fake">
+        <button aria-label="表情">☺</button>
+        <button aria-label="GIF">GIF</button>
+        <div class="sendButton__fake"><button id="send" aria-label="发送消息">➤</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* 告诉用户脚本别自动启动，测试里手动 new */
+    window.__QSB_MANUAL_BOOT__ = true;
+  </script>
+
+  <!-- 生成的用户脚本（里面含 BdApi 兼容层 + 插件源码 + 启动/设置入口） -->
+  <script src="../QuickSymbols.user.js"></script>
+
+  <script>
+    const editor = () => document.querySelector('[data-slate-editor="true"]');
+    const frame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const text = () => editor().textContent;
+    const button = () => document.querySelector(".qsb-btn");
+    const wrap = () => document.querySelector(".qsb-wrap");
+    const menu = () => document.querySelector(".qsb-menu");
+    const modal = () => document.querySelector(".qsb-us-modal");
+
+    function caret() {
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount) return -1;
+      const range = selection.getRangeAt(0);
+      const pre = document.createRange();
+      pre.selectNodeContents(editor());
+      pre.setEnd(range.startContainer, range.startOffset);
+      return pre.toString().length;
+    }
+
+    function focusEnd() {
+      const node = editor();
+      node.focus();
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    }
+
+    function replaceTextAndSelectAll(value) {
+      const node = editor();
+      node.textContent = value;
+      node.focus();
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    }
+
+    function click(node) {
+      node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      node.click();
+    }
+
+    window.__runQuickSymbolsSuite = async function () {
+      const results = [];
+      const check = async (name, fn) => {
+        try {
+          const detail = await fn();
+          results.push({ name, ok: true, detail: detail === undefined ? "" : String(detail) });
+        } catch (err) {
+          results.push({ name, ok: false, detail: err && err.message ? err.message : String(err) });
+        }
+      };
+      const expect = (actual, expected, label) => {
+        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+          throw new Error((label ? label + "：" : "") + "实际 " + JSON.stringify(actual) + "，期望 " + JSON.stringify(expected));
+        }
+      };
+
+      await check("兼容层：BdApi 的几组接口都在", async () => {
+        expect(typeof window.BdApi, "object", "BdApi");
+        expect(typeof window.BdApi.Data.load, "function", "Data.load");
+        expect(typeof window.BdApi.Data.save, "function", "Data.save");
+        expect(typeof window.BdApi.loadData, "function", "旧版 loadData");
+        expect(typeof window.BdApi.DOM.addStyle, "function", "DOM.addStyle");
+        expect(typeof window.BdApi.Webpack.getByKeys, "function", "Webpack.getByKeys");
+        expect(typeof window.BdApi.ReactUtils.getInternalInstance, "function", "ReactUtils");
+        expect(typeof window.BdApi.UI.showToast, "function", "UI.showToast");
+        expect(typeof window.BdApi.Logger.warn, "function", "Logger.warn");
+      });
+
+      await check("兼容层：存储可写可读", async () => {
+        window.BdApi.Data.save("QuickSymbols", "probe", { hello: "世界" });
+        expect(window.BdApi.Data.load("QuickSymbols", "probe"), { hello: "世界" }, "读回来的值");
+        expect(window.localStorage.getItem("qsb.QuickSymbols.probe") !== null, true, "落在 localStorage 里");
+        window.BdApi.Data.delete("QuickSymbols", "probe");
+        expect(window.BdApi.Data.load("QuickSymbols", "probe"), null, "删除后为空");
+      });
+
+      await check("兼容层：Webpack / React 在没有 Discord 环境时安全返回 null", async () => {
+        expect(window.BdApi.Webpack.getByKeys("dispatchToLastSubscribed"), null, "getByKeys");
+        expect(window.BdApi.Webpack.getModule(() => true), null, "getModule");
+        expect(window.BdApi.ReactUtils.getInternalInstance(document.body), null, "内部实例");
+        expect(typeof window.__QSB_PLUGIN__, "function", "插件类已导出");
+        expect(window.__qsbInstance, undefined, "手动启动模式下没有自动实例");
+      });
+
+      await check("兼容层：样式能注入也能撤掉", async () => {
+        window.BdApi.DOM.addStyle("qsb-probe", ".qsb-probe{color:red}");
+        const style = document.getElementById("bd-qsb-probe");
+        expect(!!style, true, "样式节点存在");
+        expect(style.textContent, ".qsb-probe{color:red}", "样式内容");
+        window.BdApi.DOM.removeStyle("qsb-probe");
+        expect(!!document.getElementById("bd-qsb-probe"), false, "样式节点已移除");
+      });
+
+      const plugin = new window.__QSB_PLUGIN__({ name: "QuickSymbols", version: "test" });
+      window.__qsbInstance = plugin;
+      window.__qs = plugin;
+
+      await check("启动：按钮挂在发送键左边，样式由兼容层注入", async () => {
+        plugin.start();
+        await frame();
+        expect(!!button(), true, "按钮存在");
+        expect(button().textContent, "“”", "按钮文本");
+        const sendWrap = document.querySelector(".sendButton__fake");
+        expect(sendWrap.previousElementSibling === wrap(), true, "按钮在发送键包裹层之前");
+        expect(button().style.getPropertyValue("--qsb-scale"), "0.82", "默认字号比例");
+        expect(!!document.getElementById("bd-QuickSymbols"), true, "插件样式已注入");
+        expect(plugin.mounts.size, 1, "挂载数量");
+      });
+
+      await check("插入：光标停在符号中间", async () => {
+        plugin.updateConfig({ menuMode: "hover" });
+        focusEnd();
+        click(button());
+        await wait(200);
+        expect(text(), "“”", "输入框文本");
+        expect(caret(), 1, "光标位置");
+      });
+
+      await check("跳过：再点一次不会多插一对", async () => {
+        click(button());
+        await wait(200);
+        expect(text(), "“”", "输入框文本不变");
+        expect(caret(), 2, "光标跳过右引号");
+      });
+
+      await check("包裹：选中文字后包进符号里", async () => {
+        replaceTextAndSelectAll("你好");
+        click(button());
+        await wait(200);
+        expect(text(), "“你好”", "包住选中文字");
+      });
+
+      await check("右键按钮：设置弹窗打开，Esc 关闭", async () => {
+        button().dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+        await frame();
+        expect(!!modal(), true, "弹窗已出现");
+        expect(!!modal().querySelector(".qsb-settings"), true, "里面是设置面板");
+        const before = window.BdApi.Data.load("QuickSymbols", "config");
+        const scale = modal().querySelector(".qsb-range");
+        const base = scale ? Number(scale.value) : -1;
+        expect(base >= 50 && base <= 150, true, "字号滑杆初值 " + base);
+
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await frame();
+        expect(!!modal(), false, "弹窗已关闭");
+        const after = window.BdApi.Data.load("QuickSymbols", "config");
+        expect(after !== null, true, "关闭时把配置存了下来");
+      });
+
+      await check("stop：按钮、菜单、样式都撤掉", async () => {
+        plugin.stop();
+        await frame();
+        expect(!!button(), false, "按钮已移除");
+        expect(!!menu(), false, "菜单已移除");
+        expect(!!document.getElementById("bd-QuickSymbols"), false, "插件样式已移除");
+      });
+
+      return results;
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>QuickSymbols 浏览器冒烟测试</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #313338; color: #dcddde; font-family: "Segoe UI", sans-serif; }
+  .channelTextArea__fake { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px; background: #383a40; }
+  .outer { display: flex; flex-direction: column; gap: 6px; }
+  .editorWrap { background: #383a40; border-radius: 8px; padding: 10px; min-height: 40px; }
+  [data-slate-editor] { outline: none; min-height: 20px; font-size: 16px; }
+  .buttons__fake { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .buttons__fake button { background: transparent; border: 0; color: #b9bbbe; font-size: 16px; cursor: pointer; }
+</style>
+</head>
+<body>
+  <!-- 模仿 Discord 聊天栏的最小结构：输入框容器 > 编辑器 + 图标栏（图标栏里有发送键的包裹层） -->
+  <div class="channelTextArea__fake">
+    <div class="outer">
+      <div class="editorWrap">
+        <div id="editor" contenteditable="true" role="textbox" data-slate-editor="true" spellcheck="false"></div>
+      </div>
+      <div class="buttons__fake">
+        <button aria-label="表情">☺</button>
+        <button aria-label="GIF">GIF</button>
+        <div class="sendButton__fake"><button id="send" aria-label="发送消息">➤</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* 最小 BdApi 替身：只实现插件真正用到的那几个接口 */
+    window.__toasts = [];
+    window.BdApi = {
+      Logger: {
+        info: (...args) => console.log(...args),
+        warn: (...args) => console.warn(...args),
+        error: (...args) => console.error(...args)
+      },
+      Data: {
+        store: {},
+        load(plugin, key) { return Object.prototype.hasOwnProperty.call(this.store, plugin + "/" + key) ? JSON.parse(this.store[plugin + "/" + key]) : null; },
+        save(plugin, key, data) { this.store[plugin + "/" + key] = JSON.stringify(data); },
+        delete(plugin, key) { delete this.store[plugin + "/" + key]; }
+      },
+      DOM: {
+        addStyle(id, css) {
+          const style = document.createElement("style");
+          style.id = "bd-" + id;
+          style.textContent = css;
+          document.head.appendChild(style);
+        },
+        removeStyle(id) {
+          const style = document.getElementById("bd-" + id);
+          if (style) style.remove();
+        }
+      },
+      UI: { showToast(message) { window.__toasts.push(String(message)); } },
+      Webpack: { getByKeys() { return null; } }
+    };
+  </script>
+
+  <script src="../QuickSymbols.plugin.js"></script>
+  <script>
+    window.TestPlugin = QuickSymbols;
+
+    const editor = () => document.querySelector('[data-slate-editor="true"]');
+    const frame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const text = () => editor().textContent;
+    const button = () => document.querySelector(".qsb-btn");
+    const wrap = () => document.querySelector(".qsb-wrap");
+    const menu = () => document.querySelector(".qsb-menu");
+
+    function caret() {
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount) return -1;
+      const range = selection.getRangeAt(0);
+      const pre = document.createRange();
+      pre.selectNodeContents(editor());
+      pre.setEnd(range.startContainer, range.startOffset);
+      return pre.toString().length;
+    }
+
+    function focusEnd() {
+      const node = editor();
+      node.focus();
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    }
+
+    function replaceTextAndSelectAll(value) {
+      const node = editor();
+      node.textContent = value;
+      node.focus();
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    }
+
+    function click(node) {
+      node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      node.click();
+    }
+
+    window.__runQuickSymbolsSuite = async function () {
+      const results = [];
+      const check = async (name, fn) => {
+        try {
+          const detail = await fn();
+          results.push({ name, ok: true, detail: detail === undefined ? "" : String(detail) });
+        } catch (err) {
+          results.push({ name, ok: false, detail: err && err.message ? err.message : String(err) });
+        }
+      };
+      const expect = (actual, expected, label) => {
+        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+          throw new Error((label ? label + "：" : "") + "实际 " + JSON.stringify(actual) + "，期望 " + JSON.stringify(expected));
+        }
+      };
+
+      const plugin = new TestPlugin({ name: "QuickSymbols" });
+      window.__qs = plugin;
+
+      await check("start：按钮挂在发送键左边", async () => {
+        plugin.start();
+        await frame();
+        expect(!!button(), true, "按钮存在");
+        expect(button().textContent, "“”", "按钮文本");
+        const sendWrap = document.querySelector(".sendButton__fake");
+        expect(sendWrap.previousElementSibling === wrap(), true, "按钮在发送键包裹层之前");
+        expect(button().style.getPropertyValue("--qsb-scale"), "0.82", "默认字号比例");
+        expect(plugin.mounts.size, 1, "挂载数量");
+      });
+
+      await check("插入：光标停在符号中间", async () => {
+        plugin.updateConfig({ menuMode: "hover" });
+        focusEnd();
+        click(button());
+        await frame();
+        expect(text(), "“”", "输入框文本");
+        expect(caret(), 1, "光标位置");
+      });
+
+      await check("跳过：再点一次不会多插一对", async () => {
+        click(button());
+        await frame();
+        expect(text(), "“”", "输入框文本不变");
+        expect(caret(), 2, "光标跳过右引号");
+      });
+
+      await check("包裹：选中文字后包进符号里", async () => {
+        replaceTextAndSelectAll("你好");
+        click(button());
+        await frame();
+        expect(text(), "“你好”", "包住选中文字");
+      });
+
+      await check("菜单：展开、切换符号并插入", async () => {
+        plugin.openMenu(plugin.mounts.values().next().value);
+        await frame();
+        expect(!!menu(), true, "菜单已出现");
+        expect(menu().querySelectorAll(".qsb-item").length, 8, "菜单项数量");
+        expect(menu().querySelectorAll(".qsb-item.qsb-current").length, 1, "当前符号高亮");
+        const second = menu().querySelectorAll(".qsb-sym")[1];
+        expect(second.textContent, "「」", "第二个符号");
+        focusEnd();
+        click(second);
+        await frame();
+        expect(button().textContent, "「」", "按钮跟着换符号");
+        expect(text().slice(-2), "「」", "插入到末尾");
+        expect(caret(), text().length - 1, "光标停在「之后");
+        await wait(250); // 关闭带 170ms 渐隐，等节点回收
+        expect(!!menu(), false, "插入后菜单关闭");
+      });
+
+      await check("内外切换：外模式插入后光标跟在后面", async () => {
+        plugin.openMenu(plugin.mounts.values().next().value);
+        await frame();
+        const item = menu().querySelectorAll(".qsb-item")[1];
+        expect(item.querySelector(".qsb-side").textContent, "内", "默认是内");
+        click(item.querySelector(".qsb-side"));
+        await frame();
+        expect(menu().querySelectorAll(".qsb-item")[1].querySelector(".qsb-side").textContent, "外", "切换成外");
+        focusEnd();
+        click(button());
+        await frame();
+        expect(caret(), text().length, "光标跟在符号后");
+      });
+
+      await check("点按模式：第一下开菜单，第二下插入", async () => {
+        plugin.updateConfig({ menuMode: "tap" });
+        const before = text();
+        click(button());
+        await frame();
+        expect(!!menu(), true, "第一下展开菜单");
+        expect(text(), before, "第一下不插入");
+        click(button());
+        await frame();
+        expect(text().slice(-2), "「」", "第二下插入符号");
+        await wait(250);
+        expect(!!menu(), false, "插入后菜单关闭");
+      });
+
+      await check("设置面板：控件能改配置并即时生效", async () => {
+        const panel = plugin.getSettingsPanel();
+        document.body.appendChild(panel);
+        expect(panel.querySelectorAll(".qsb-setting").length, 6, "设置行数量");
+        expect(panel.querySelectorAll(".qsb-symbol-row").length, 8, "符号行数量");
+
+        const scale = panel.querySelector(".qsb-range");
+        scale.value = "120";
+        scale.dispatchEvent(new Event("input"));
+        await frame();
+        expect(button().style.getPropertyValue("--qsb-scale"), "1.2", "字号比例跟着变");
+
+        const showButton = panel.querySelectorAll(".qsb-check")[0];
+        showButton.checked = false;
+        showButton.dispatchEvent(new Event("change"));
+        await frame();
+        expect(wrap().style.display, "none", "按钮被隐藏");
+        showButton.checked = true;
+        showButton.dispatchEvent(new Event("change"));
+        await frame();
+        expect(wrap().style.display, "", "按钮恢复显示");
+
+        expect(plugin.cfg.glyphScale, 120, "配置里的字号");
+        await wait(400); // 保存是 300ms 防抖
+        expect(window.BdApi.Data.load("QuickSymbols", "config") !== null, true, "配置已落盘");
+      });
+
+      await check("添加和删除符号", async () => {
+        const panel = document.querySelector(".qsb-settings");
+        const input = panel.querySelector(".qsb-add-row .qsb-text");
+        input.value = "『』";
+        click(panel.querySelector(".qsb-primary"));
+        await frame();
+        expect(document.querySelectorAll(".qsb-symbol-row").length, 9, "添加后行数");
+        expect(plugin.cfg.symbols[8].text, "『』", "新增的符号");
+        expect(plugin.cfg.symbols[8].inner, true, "成对符号默认内");
+
+        const rows = document.querySelectorAll(".qsb-symbol-row");
+        const last = rows[rows.length - 1];
+        click(last.querySelector(".qsb-mini"));
+        await frame();
+        expect(document.querySelectorAll(".qsb-symbol-row").length, 8, "删除后行数");
+        expect(plugin.cfg.symbols.some((entry) => entry.text === "『』"), false, "符号已移除");
+      });
+
+      await check("诊断信息可读", async () => {
+        const report = plugin.diagnose();
+        expect(report.includes("找到的输入框：1"), true, "诊断包含挂载数量");
+        expect(window.__toasts.length > 0, true, "弹出过提示");
+      });
+
+      await check("回归：编辑器里的 @提及不是发送键，钩子不会被塞进编辑器", async () => {
+        // 模拟 Discord 真机：@提及渲染成编辑器内部的 <span role="button">，
+        // 空输入框时真正的发送键还不存在。旧实现会把提及当成发送键，把钩子插进它的里面。
+        const sendWrap = document.querySelector(".sendButton__fake");
+        const sendHome = sendWrap.parentElement;
+        sendWrap.remove();
+
+        // 真机里一个提及是「两层 role=button」的 inline 节点，旧实现会把它当发送键，
+        // 进而把钩子插进这层 span 里——按钮就成了消息内容。
+        const mention = document.createElement("span");
+        mention.setAttribute("role", "button");
+        mention.setAttribute("contenteditable", "false");
+        const mentionInner = document.createElement("span");
+        mentionInner.setAttribute("role", "button");
+        mentionInner.textContent = "@someone";
+        mention.appendChild(mentionInner);
+        editor().appendChild(mention);
+
+        plugin.mountAll();
+        await frame();
+        expect(editor().contains(button()), false, "钩子没有落在编辑器里");
+        expect(button().closest(".buttons__fake") !== null, true, "钩子仍在图标栏");
+        expect(mention.contains(button()), false, "钩子没有落进提及标签");
+
+        mention.remove();
+        sendHome.appendChild(sendWrap);
+        plugin.mountAll();
+        await frame();
+        expect(wrap().nextElementSibling, sendWrap, "发送键回来后又挪到它左边");
+      });
+
+      await check("stop：按钮、菜单、样式都撤掉", async () => {
+        plugin.stop();
+        await frame();
+        expect(!!button(), false, "按钮已移除");
+        expect(!!menu(), false, "菜单已移除");
+        expect(!!document.getElementById("bd-QuickSymbols"), false, "样式已移除");
+      });
+
+      return results;
+    };
+  </script>
+</body>
+</html>
