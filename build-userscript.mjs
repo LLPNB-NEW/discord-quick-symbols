@@ -39,7 +39,7 @@ const HEADER = `// ==UserScript==
 // @version      ${version}
 // @description  ${description}
 // @author       ${author}
-// @license      MIT
+// @license      GPL-3.0-or-later
 // @homepageURL  https://github.com/LLPNB-NEW/discord-quick-symbols
 // @match        https://discord.com/*
 // @match        https://ptb.discord.com/*
