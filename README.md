@@ -1,14 +1,23 @@
 # 快捷符号（Discord 版）
 
-> **分支说明**：`main` 是客户端版（BetterDiscord 插件）；网页版（篡改猴用户脚本）在
-> [`userscript` 分支](https://github.com/LLPNB-NEW/discord-quick-symbols/tree/userscript)。
-> 两边的符号逻辑、菜单、快捷键完全一致，只是宿主不同。
+> **当前分支：`userscript`（网页版）**。这是可以用篡改猴装进浏览器、直接在 discord.com 里跑的用户脚本；
+> 客户端版（BetterDiscord 插件）在 [`main` 分支](https://github.com/LLPNB-NEW/discord-quick-symbols/tree/main)。
+> 两边的符号逻辑、菜单、快捷键完全一致，只是宿主不同，配置各存各的。
 
 在 Discord 聊天输入框的**发送键左边**加一个直接显示符号本身的按钮——默认是「“”」。
 点一下插入一对符号、光标停在中间；再点一下跳过右半边；选中文字时自动把文字包进符号里。
 
-这是之前那套 SillyTavern / TauriTavern「快捷符号按钮」的 Discord 版本，交互习惯保持一致，
-只是宿主从网页里的扩展换成了 BetterDiscord 插件。
+## 安装（网页版）
+
+1. 装 [Tampermonkey](https://www.tampermonkey.net/)（或 Violentmonkey）。
+2. 点这个链接安装脚本：
+   <https://raw.githubusercontent.com/LLPNB-NEW/discord-quick-symbols/userscript/QuickSymbols.user.js>
+   （篡改猴会直接弹安装页；也可以下载后把 `.user.js` 拖进浏览器窗口。）
+3. 打开 <https://discord.com/channels/@me> 并刷新页面，进任意频道。
+4. 输入框图标栏里会出现「“”」按钮。**右键点它**打开设置面板（网页版没有 BD 的插件设置页），
+   `Esc` 或点面板外空白处关闭。
+
+> 只对网页版 discord.com 生效；桌面客户端请用 `main` 分支的 BetterDiscord 版本。
 
 ---
 
@@ -27,7 +36,7 @@
 
 ---
 
-## 安装
+## 客户端版安装（切到 main 分支）
 
 这个插件是 **BetterDiscord** 插件，原版 Discord 不能直接加载 `.plugin.js`。
 
@@ -47,25 +56,17 @@
 
 ---
 
-## 网页版（篡改猴用户脚本）
+## 这个分支是怎么来的
 
-只用网页版 discord.com、不想装 BetterDiscord 的话，用打包好的用户脚本，功能一样。
-代码和这份 README 的网页版说明都在 [`userscript` 分支](https://github.com/LLPNB-NEW/discord-quick-symbols/tree/userscript)。
-
-1. 装 [Tampermonkey](https://www.tampermonkey.net/)（或 Violentmonkey）。
-2. 打开 <https://raw.githubusercontent.com/LLPNB-NEW/discord-quick-symbols/userscript/QuickSymbols.user.js>，
-   篡改猴会直接弹出安装页；也可以把文件下载下来拖进浏览器窗口。
-3. 打开 <https://discord.com/channels/@me> 并刷新，进任意频道，发送键左边会出现「“”」按钮。
-4. **右键点这个按钮**打开设置面板（网页版没有 BD 的插件设置页）；`Esc` 或点面板外空白处关闭，改动即时保存。
-
-用户脚本就是把 `QuickSymbols.plugin.js` 原样打包，前面套了一层 BdApi 兼容层（存储、样式、Webpack、
-React 内部实例、toast、日志），所以插入逻辑、菜单、快捷键和桌面版完全一致。改过插件后重新生成：
+`QuickSymbols.user.js` 就是把 `QuickSymbols.plugin.js` 原样打包，前面套了一层 BdApi 兼容层
+（存储、样式、Webpack、React 内部实例、toast、日志），所以插入逻辑、菜单、快捷键和桌面版完全一致。
+改过插件后重新生成（在 `main` 分支上跑，再把产物提交到这个分支）：
 
 ```
 node build-userscript.mjs
 ```
 
-> 只对网页版 discord.com 生效，桌面客户端仍用 BetterDiscord 版本。设置存在 `QuickSymbols.*` 名下
+> 只对网页版 discord.com 生效；桌面客户端请用 `main` 分支的 BetterDiscord 版本。设置存在 `QuickSymbols.*` 名下
 > （脚本管理器提供 GM 存储就用 GM 存储，否则退回 localStorage），换浏览器或换管理器不会同步。
 
 ---
@@ -109,9 +110,11 @@ BD 设置 → 插件 → QuickSymbols 右边的齿轮，或插件卡片里的设
 ## 常见问题
 
 **按钮没出现？**
-1. 确认 BD 插件列表里 QuickSymbols 是开着的（不是只在文件夹里）。
+1. 确认脚本装上了且在运行：篡改猴的「管理面板」里 QuickSymbols 应该是启用状态，
+   并且 `https://discord.com` 的图标上显示 `1`（表示已注入）。
 2. 按 `Ctrl+Shift+I` 打开控制台，看有没有 `[QuickSymbols]` 开头的日志。
-3. 在设置面板点「输出诊断信息」，它会把「找到的输入框数量 / 发送键 / 图标栏 / 插入通道」列出来。
+3. 右键按钮（如果没有按钮，就先按 `F5` 刷新页面），在设置面板点「输出诊断信息」，
+   它会把「找到的输入框数量 / 发送键 / 图标栏 / 插入通道」列出来。
    - 输入框为 0：Discord 这版可能改了输入框结构，把诊断内容发出来就能定位。
 
 **点了没反应？**
