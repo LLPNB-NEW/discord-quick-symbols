@@ -145,41 +145,6 @@ BD 设置 → 插件 → QuickSymbols → 关掉开关；想彻底删掉就把 `
 
 ---
 
-## 文件说明
-
-| 文件 | 作用 |
-| --- | --- |
-| `QuickSymbols.plugin.js` | 插件本体，单文件，直接放进 BD 插件目录即可 |
-| `QuickSymbols.user.js` | 网页版用户脚本（由 `build-userscript.mjs` 生成，不要手改） |
-| `build-userscript.mjs` | 把插件打包成用户脚本：`node build-userscript.mjs` |
-| `check.mjs` | 不需要 Discord 的自动检查，`node check.mjs`，60 项断言 |
-| `install.ps1` | 把插件复制到 BetterDiscord 插件目录的小脚本 |
-| `tests/browser-check.mjs` | 无头浏览器冒烟测试：`node tests/browser-check.mjs`，11 项交互断言 |
-| `tests/live-probe.mjs` | 在真实 discord.com 登录页验证兼容层：`node tests/live-probe.mjs --userscript` |
-| `tests/userscript-harness.html` | 用户脚本的冒烟测试页，`node tests/browser-check.mjs --page tests/userscript-harness.html`，10 项断言 |
-| `tests/harness.html` | 上面那个测试用的页面（仿 Discord 聊天栏 + 假的 BdApi） |
-| `tests/slate-lab.html` | Slate 光标同步实验室：用真 Slate 复现「插入后打 @ 落在括号外」，验证修法；配 `tests/serve.mjs` 起本地 http |
-| `DEVELOPER.md` | 实现细节、DOM 假设、测试与排查手册 |
-| `LICENSE` | GPL-3.0 开源协议 |
-
----
-
-## 和上一版（SillyTavern 扩展）的差异
-
-| | SillyTavern / TauriTavern 版 | 这一版（Discord） |
-| --- | --- | --- |
-| 宿主 | 网页扩展文件夹 | BetterDiscord 单文件插件 |
-| 输入框 | `<textarea>` | Slate `contenteditable` |
-| 插入方式 | `execCommand("insertText")` | 先调这个输入框自己的 TextArea 实例插入（保证写进 Slate 模型），再退 `INSERT_TEXT`、`execCommand`；每条都验文本有没有真的变 |
-| 存储 | `extension_settings` / localStorage | `BdApi.Data`（`plugins\QuickSymbols.config.json`） |
-| 按钮位置 | 发送键左边（原生工具栏） | 聊天输入框图标栏里、发送键左边（发送键只在有文字时出现，出现后自动就位） |
-
-同样的几个结论沿用下来了：**触屏判定不能看 `maxTouchPoints`**（桌面机会误报），要按
-`matchMedia("(hover: hover)")` 判定；配置里**缺失的键必须当成默认值**处理，不能当成
-「用户关掉了」；光标位置要单独记，因为输入框失焦后读到的选区往往是末尾。
-
----
-
 ## 开源协议
 
 [GPL-3.0](LICENSE) © 2026 LLP和小鲸娘
