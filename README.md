@@ -1,5 +1,9 @@
 # 快捷符号（Discord 版）
 
+> **分支说明**：`main` 是客户端版（BetterDiscord 插件）；网页版（篡改猴用户脚本）在
+> [`userscript` 分支](https://github.com/LLPNB-NEW/discord-quick-symbols/tree/userscript)。
+> 两边的符号逻辑、菜单、快捷键完全一致，只是宿主不同。
+
 在 Discord 聊天输入框的**发送键左边**加一个直接显示符号本身的按钮——默认是「“”」。
 点一下插入一对符号、光标停在中间；再点一下跳过右半边；选中文字时自动把文字包进符号里。
 
@@ -45,10 +49,12 @@
 
 ## 网页版（篡改猴用户脚本）
 
-只用网页版 discord.com、不想装 BetterDiscord 的话，用打包好的用户脚本，功能一样：
+只用网页版 discord.com、不想装 BetterDiscord 的话，用打包好的用户脚本，功能一样。
+代码和这份 README 的网页版说明都在 [`userscript` 分支](https://github.com/LLPNB-NEW/discord-quick-symbols/tree/userscript)。
 
 1. 装 [Tampermonkey](https://www.tampermonkey.net/)（或 Violentmonkey）。
-2. 打开 `QuickSymbols.user.js`：在扩展的「添加新脚本」里整份粘贴保存；或者把文件拖进浏览器窗口，扩展会弹出安装页。
+2. 打开 <https://raw.githubusercontent.com/LLPNB-NEW/discord-quick-symbols/userscript/QuickSymbols.user.js>，
+   篡改猴会直接弹出安装页；也可以把文件下载下来拖进浏览器窗口。
 3. 打开 <https://discord.com/channels/@me> 并刷新，进任意频道，发送键左边会出现「“”」按钮。
 4. **右键点这个按钮**打开设置面板（网页版没有 BD 的插件设置页）；`Esc` 或点面板外空白处关闭，改动即时保存。
 
