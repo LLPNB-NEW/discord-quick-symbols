@@ -160,6 +160,7 @@ BD 设置 → 插件 → QuickSymbols → 关掉开关；想彻底删掉就把 `
 | `tests/harness.html` | 上面那个测试用的页面（仿 Discord 聊天栏 + 假的 BdApi） |
 | `tests/slate-lab.html` | Slate 光标同步实验室：用真 Slate 复现「插入后打 @ 落在括号外」，验证修法；配 `tests/serve.mjs` 起本地 http |
 | `DEVELOPER.md` | 实现细节、DOM 假设、测试与排查手册 |
+| `LICENSE` | MIT 开源协议 |
 
 ---
 
@@ -176,3 +177,12 @@ BD 设置 → 插件 → QuickSymbols → 关掉开关；想彻底删掉就把 `
 同样的几个结论沿用下来了：**触屏判定不能看 `maxTouchPoints`**（桌面机会误报），要按
 `matchMedia("(hover: hover)")` 判定；配置里**缺失的键必须当成默认值**处理，不能当成
 「用户关掉了」；光标位置要单独记，因为输入框失焦后读到的选区往往是末尾。
+
+---
+
+## 开源协议
+
+[MIT](LICENSE) © 2026 LLP和小鲸娘
+
+随便用、随便改、随便分发，包括商用；保留版权声明和协议原文即可，不提供任何担保。
+重新打包或二次发布时，请一并保留 `LICENSE`。
