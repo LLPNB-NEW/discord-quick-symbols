@@ -85,11 +85,20 @@ Discord 的类名是 CSS Modules 哈希（如 `channelTextArea__2e60f`、`button
 
 ```
 EDITOR_SELECTOR = '[contenteditable="true"][role="textbox"], [data-slate-editor="true"]'
+DIALOG_SELECTOR = '[role="dialog"], [aria-modal="true"], [class*="modal" i], [class*="dialog" i]'
+isComposerEditor(editor) = 不是搜索框（aria 排 /(搜索|查找|筛选|search|filter)/）
+                           && 祖先里没有 DIALOG_SELECTOR
+                           && closest('[class*="channelTextArea"], [class*="channelBottomBarArea"], [class*="chatInput"]')
 findComposer(editor)   = editor.closest('[class*="channelTextArea"]') || closest('[class*="chatInput"]')
 visibleButtons(scope)  = scope 里可见的 button / [role=button]，**排除 closest(EDITOR_SELECTOR) 的那些**
 findEmojiButton(scope) = 从右往左找 aria-label 命中 /(表情|emoji|emote)/ 或类名含 emojiButton 的按钮
 findRowSpot(send)      = 从发送键往上最多 4 层，找第一个含 ≥2 个可见按钮的那层
 ```
+
+**弹窗里的输入框不是聊天框。** 频道语音状态弹窗（「我们聊些什么？」）里的状态输入框复用了
+`channelTextArea__74017` 这类类名，只按类名判断会多挂一个按钮到弹窗右上角（1.0.5 修的）。
+`isComposerEditor()` 先用 `DIALOG_SELECTOR` 排掉 `[role="dialog"]` / `[aria-modal="true"]` /
+类名含 modal、dialog 的祖先，再要求真的在输入框容器里。
 
 **最重要的一条：编辑器内部的 `[role=button]` 是消息内容，不是界面按钮。** Discord 把 @提及、表情、
 频道引用都渲染成 `<span role="button">` 塞在 Slate 里；真机上这些 span 还是两层嵌套的。
