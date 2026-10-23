@@ -293,6 +293,36 @@
         expect(wrap().nextElementSibling, sendWrap, "发送键回来后又挪到它左边");
       });
 
+      await check("回归：弹窗里的输入框（频道状态）不装按钮", async () => {
+        // 真机里「我们聊些什么？」弹窗的状态输入框复用了 channelTextArea 的类名，
+        // 旧实现会把它当聊天框，在弹窗右上角再挂一个按钮。
+        const dialog = document.createElement("div");
+        dialog.setAttribute("role", "dialog");
+        dialog.className = "modal__fake";
+        const area = document.createElement("div");
+        area.className = "channelTextArea__fake";
+        const status = document.createElement("div");
+        status.setAttribute("contenteditable", "true");
+        status.setAttribute("role", "textbox");
+        status.setAttribute("data-slate-editor", "true");
+        status.setAttribute("aria-label", "常规 的状态");
+        area.appendChild(status);
+        dialog.appendChild(area);
+        document.body.appendChild(dialog);
+
+        plugin.mountAll();
+        await frame();
+        expect(plugin.mounts.size, 1, "弹窗里的编辑框没有多挂一个");
+        expect(dialog.querySelector(".qsb-btn"), null, "弹窗里没有按钮");
+        expect(!!button(), true, "聊天栏的按钮还在");
+        expect(status.contains(button()), false, "聊天栏按钮没有被挪进弹窗");
+
+        dialog.remove();
+        plugin.mountAll();
+        await frame();
+        expect(plugin.mounts.size, 1, "弹窗关掉后挂载数不变");
+      });
+
       await check("stop：按钮、菜单、样式都撤掉", async () => {
         plugin.stop();
         await frame();

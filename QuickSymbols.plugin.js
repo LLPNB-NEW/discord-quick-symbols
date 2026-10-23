@@ -2,7 +2,7 @@
  * @name QuickSymbols
  * @author LLP和小鲸娘
  * @description 在聊天输入框的发送键左边加一个“”按钮：点一下插入一对符号，光标落在符号中间；悬停或点按还能换用别的符号、调整光标落点。
- * @version 1.0.4
+ * @version 1.0.5
  */
 
 /*
@@ -35,7 +35,7 @@
  * ================================================================== */
 
 const PLUGIN_NAME = "QuickSymbols";
-const PLUGIN_VERSION = "1.0.4";
+const PLUGIN_VERSION = "1.0.5";
 const CONFIG_KEY = "config";
 const STYLE_ID = "QuickSymbols";
 const LOG_PREFIX = "[QuickSymbols]";
@@ -499,16 +499,23 @@ function el(tag, props, children, doc) {
 
 const EDITOR_SELECTOR = '[contenteditable="true"][role="textbox"], [data-slate-editor="true"]';
 
+/** 弹窗、浮层里的输入框不是聊天输入框，见 isComposerEditor()。 */
+const DIALOG_SELECTOR = '[role="dialog"], [aria-modal="true"], [class*="modal" i], [class*="dialog" i]';
+
 /**
  * 只有真正的聊天输入框才装按钮。
- * Discord 里还有别的 Slate 编辑框（频道标题上那个搜索框就是），它们的 aria-label
- * 是「搜索 …」，祖先里也没有 channelTextArea；不排掉就会在搜索栏旁边冒出一个符号按钮。
+ * Discord 里还有别的 Slate 编辑框：
+ *   - 频道标题上那个搜索框，aria-label 是「搜索 …」，祖先里也没有 channelTextArea；
+ *   - 频道语音状态弹窗（「我们聊些什么？」）里的状态输入框，它复用了 channelTextArea
+ *     的类名，只按类名判断会把它当聊天框——按钮就跑到弹窗的输入框右上角去了。
+ * 所以先排掉弹窗祖先，再要求真的在 channelTextArea / 底部栏 / chatInput 里面。
  */
 function isComposerEditor(editor) {
   if (!editor || !editor.isConnected) return false;
   const aria = editor.getAttribute("aria-label") || "";
   if (/(搜索|查找|筛选|search|filter)/i.test(aria)) return false;
   try {
+    if (editor.closest(DIALOG_SELECTOR)) return false;
     if (editor.closest('[class*="channelTextArea"], [class*="channelBottomBarArea"], [class*="chatInput"]')) return true;
   } catch (err) {
     /* 继续用下面的兜底判断 */
