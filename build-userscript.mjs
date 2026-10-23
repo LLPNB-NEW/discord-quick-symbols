@@ -19,7 +19,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_FILE = join(here, "QuickSymbols.plugin.js");
 const OUTPUT_FILE = join(here, "QuickSymbols.user.js");
 
-const pluginSource = readFileSync(PLUGIN_FILE, "utf8");
+// 统一成 LF：Git 在 Windows 上可能把工作区文件换成 CRLF，直接拼进去会让产物随
+// 检出配置漂移（同样的源码在不同机器上生成不同字节），diff 里也全是行尾噪声。
+const pluginSource = readFileSync(PLUGIN_FILE, "utf8").replace(/\r\n?/g, "\n");
 
 function metaOf(source, field) {
   const match = source.match(new RegExp("\\*\\s*@" + field + "\\s+(.+)"));
