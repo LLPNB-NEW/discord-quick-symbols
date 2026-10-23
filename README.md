@@ -163,7 +163,7 @@ BD 设置 → 插件 → QuickSymbols → 关掉开关；想彻底删掉就把 `
 | `tests/harness.html` | 上面那个测试用的页面（仿 Discord 聊天栏 + 假的 BdApi） |
 | `tests/slate-lab.html` | Slate 光标同步实验室：用真 Slate 复现「插入后打 @ 落在括号外」，验证修法；配 `tests/serve.mjs` 起本地 http |
 | `DEVELOPER.md` | 实现细节、DOM 假设、测试与排查手册 |
-| `LICENSE` | MIT 开源协议 |
+| `LICENSE` | GPL-3.0 开源协议 |
 
 ---
 
@@ -185,7 +185,12 @@ BD 设置 → 插件 → QuickSymbols → 关掉开关；想彻底删掉就把 `
 
 ## 开源协议
 
-[MIT](LICENSE) © 2026 LLP和小鲸娘
+[GPL-3.0](LICENSE) © 2026 LLP和小鲸娘
 
-随便用、随便改、随便分发，包括商用；保留版权声明和协议原文即可，不提供任何担保。
-重新打包或二次发布时，请一并保留 `LICENSE`。
+本项目按 **GNU General Public License v3.0**（或更新版本）发布：
+
+- 可以自由使用、修改、分发，包括商用；分发时必须保留本协议和版权声明。
+- **改了再发（包括打包进自己的插件或用户脚本）必须以 GPL-3.0 同样开源**，并注明改动。
+- 不提供任何担保。
+
+重新打包或二次发布时，请一并保留 `LICENSE` 并注明来源仓库。
