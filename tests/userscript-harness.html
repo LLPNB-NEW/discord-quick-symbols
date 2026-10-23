@@ -195,6 +195,21 @@
         expect(after !== null, true, "关闭时把配置存了下来");
       });
 
+      await check("长按按钮：触屏也能打开设置，且不会顺手插入", async () => {
+        const before = text();
+        button().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, pointerType: "touch", clientX: 100, clientY: 100 }));
+        await wait(700);
+        expect(!!modal(), true, "长按后弹窗出现");
+        button().dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, pointerType: "touch", clientX: 100, clientY: 100 }));
+        click(button());
+        await wait(200);
+        expect(text(), before, "长按后的那一下 click 被吃掉，没有插入");
+        expect(!!modal(), true, "弹窗还开着");
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await frame();
+        expect(!!modal(), false, "Esc 关掉");
+      });
+
       await check("stop：按钮、菜单、样式都撤掉", async () => {
         plugin.stop();
         await frame();

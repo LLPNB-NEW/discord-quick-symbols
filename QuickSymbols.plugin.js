@@ -2,7 +2,7 @@
  * @name QuickSymbols
  * @author LLP和小鲸娘
  * @description 在聊天输入框的发送键左边加一个“”按钮：点一下插入一对符号，光标落在符号中间；悬停或点按还能换用别的符号、调整光标落点。
- * @version 1.0.3
+ * @version 1.0.4
  */
 
 /*
@@ -35,7 +35,7 @@
  * ================================================================== */
 
 const PLUGIN_NAME = "QuickSymbols";
-const PLUGIN_VERSION = "1.0.3";
+const PLUGIN_VERSION = "1.0.4";
 const CONFIG_KEY = "config";
 const STYLE_ID = "QuickSymbols";
 const LOG_PREFIX = "[QuickSymbols]";
